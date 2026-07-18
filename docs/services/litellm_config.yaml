@@ -1,0 +1,59 @@
+# LiteLLM Proxy Configuration for COGNEE-jart-on
+#
+# This file configures LiteLLM as a proxy/mask in front of the real LLM provider.
+# Cognee peers talk to LiteLLM (OpenAI-compatible API), LiteLLM forwards to the real provider.
+#
+# Start with: litellm --config litellm_config.yaml
+# Or via docker-compose (see docker-compose.yml)
+
+model_list:
+  # Main model for knowledge graph extraction
+  # Replace with your actual provider + API key
+  - model_name: cognee-llm
+    litellm_params:
+      model: openai/gpt-4o-mini          # Change to your provider
+      api_key: os.environ/LITELLM_LLM_API_KEY
+      rpm: 60                             # Rate limit: requests per minute
+      temperature: 0.0
+    model_info:
+      id: cognee-llm-primary
+
+  # Fallback model (cheaper, for retries)
+  - model_name: cognee-llm
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/LITELLM_LLM_API_KEY
+      rpm: 120
+      order: 2                            # Lower priority (used when primary fails)
+    model_info:
+      id: cognee-llm-fallback
+
+  # Optional: local Ollama model as fallback
+  # Uncomment if you have Ollama running on the LiteLLM host
+  # - model_name: cognee-llm
+  #   litellm_params:
+  #     model: ollama/qwen2.5:14b-instruct
+  #     api_base: http://host.docker.internal:11434
+  #     api_key: "ollama"
+  #     rpm: 30
+  #     order: 3
+  #   model_info:
+  #     id: cognee-llm-local
+
+router_settings:
+  routing_strategy: simple-shuffle        # Distribute across deployments
+  num_retries: 3                          # Retries per model
+  timeout: 120                            # 120s timeout (extraction can be slow)
+  allowed_fails: 3                        # Cooldown after 3 failures
+
+litellm_settings:
+  drop_params: true                       # Drop unsupported params silently
+  num_retries: 3
+  request_timeout: 120
+  # Fallback chain
+  fallbacks: [{"cognee-llm": ["cognee-llm"]}]
+
+general_settings:
+  master_key: sk-litellm                  # Change in production!
+  # Database for spend tracking (optional, needs PostgreSQL)
+  # database_url: postgresql://litellm:litellm@postgres:5432/litellm

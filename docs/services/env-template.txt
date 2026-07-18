@@ -1,0 +1,9 @@
+# COGNEE-jart-on — Docker Compose Environment
+# Copy this to .env and edit before starting services:
+#   cp docs/services/env-template.txt .env
+#
+# LLM API key (your real provider key: OpenAI, Anthropic, etc.)
+LITELLM_LLM_API_KEY=sk-your-real-api-key-here
+#
+# LiteLLM master key (authentication for the proxy)
+LITELLM_MASTER_KEY=sk-litellm

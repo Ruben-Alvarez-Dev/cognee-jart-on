@@ -1,0 +1,105 @@
+# COGNEE-jart-on — Services for Mac Mini (central node)
+#
+# Services:
+#   - litellm:   LLM proxy (enmascara la API real)
+#   - postgres:  Shared relational database
+#   - neo4j:     Shared knowledge graph
+#   - qdrant:    Shared vector store
+#
+# Ollama runs NATIVELY on the Mac Mini (not in Docker) for GPU/Metal access.
+# Install: brew install ollama
+# Pull models: ollama pull nomic-embed-text:latest
+#
+# Start: docker compose up -d
+# Stop:  docker compose down
+
+services:
+  # ─────────────────────────────────────────────
+  # LiteLLM Proxy — LLM gateway (enmascarador)
+  # ─────────────────────────────────────────────
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: cognee-litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./docs/services/litellm_config.yaml:/app/config.yaml:ro
+    command: --config /app/config.yaml --port 4000
+    environment:
+      # Set your real LLM API key here (or export before docker compose up)
+      LITELLM_LLM_API_KEY: ${LITELLM_LLM_API_KEY:-sk-your-real-api-key}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm}
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────
+  # PostgreSQL — Shared relational store
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cognee-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: cognee
+      POSTGRES_PASSWORD: cognee
+      POSTGRES_DB: cognee_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognee -d cognee_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # Neo4j — Shared knowledge graph
+  # ─────────────────────────────────────────────
+  neo4j:
+    image: neo4j:5-community
+    container_name: cognee-neo4j
+    ports:
+      - "7474:7474"   # Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/cognee-jart-on
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "neo4j status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────
+  # Qdrant — Shared vector store
+  # ─────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: cognee-qdrant
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  neo4j_data:
+  qdrant_data:
