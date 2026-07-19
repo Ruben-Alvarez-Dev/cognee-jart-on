@@ -123,27 +123,39 @@ class CogneeConfig:
 
     # Auth
     auth_enabled: bool = False
-    jwt_secret: str = "cognee-jart-on-secret-change-me"
+    jwt_secret: str = ""
 
     # Data directories
     data_root: Optional[str] = None
+
+    # Track env vars set by apply_env so revert_env() can undo them
+    _env_originals: dict[str, Optional[str]] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def apply_env(self) -> None:
         """Apply all configuration as environment variables.
 
         Must be called BEFORE importing cognee.
+        Stores originals so revert_env() can undo the mutations.
         """
         # Structured output — BAML not needed when LLM is behind LiteLLM
         # (LiteLLM handles provider abstraction, so instructor/json_schema_mode works)
-        os.environ["STRUCTURED_OUTPUT_FRAMEWORK"] = "instructor"
+        env_vars: dict[str, str] = {}
+        env_vars["STRUCTURED_OUTPUT_FRAMEWORK"] = "instructor"
 
         # Auth
-        os.environ["REQUIRE_AUTHENTICATION"] = str(self.auth_enabled).lower()
-        os.environ["ENABLE_BACKEND_ACCESS_CONTROL"] = "false"
-        os.environ["FASTAPI_USERS_JWT_SECRET"] = self.jwt_secret
+        if self.auth_enabled and not self.jwt_secret:
+            raise ValueError(
+                "auth_enabled=True requires a non-empty jwt_secret. "
+                "Set jwt_secret explicitly or via FASTAPI_USERS_JWT_SECRET env var."
+            )
+        env_vars["REQUIRE_AUTHENTICATION"] = str(self.auth_enabled).lower()
+        env_vars["ENABLE_BACKEND_ACCESS_CONTROL"] = "false"
+        env_vars["FASTAPI_USERS_JWT_SECRET"] = self.jwt_secret
 
         # Disable auto migrations on peer startup (server handles migrations)
-        os.environ["ENABLE_AUTO_MIGRATIONS"] = "false"
+        env_vars["ENABLE_AUTO_MIGRATIONS"] = "false"
 
         # Apply subsystem configs
         for env_dict in [
@@ -152,11 +164,30 @@ class CogneeConfig:
             self.database.as_env(),
         ]:
             for key, value in env_dict.items():
-                os.environ[key] = value
+                env_vars[key] = value
 
         # Data root
         if self.data_root:
-            os.environ["DATA_ROOT_DIRECTORY"] = self.data_root
+            env_vars["DATA_ROOT_DIRECTORY"] = self.data_root
+
+        # Store originals before overwriting
+        self._env_originals = {
+            key: os.environ.get(key) for key in env_vars
+        }
+        os.environ.update(env_vars)
+
+    def revert_env(self) -> None:
+        """Undo all environment variable mutations from apply_env().
+
+        Restores original values for keys that existed before apply_env(),
+        and deletes keys that didn't exist.
+        """
+        for key, original in self._env_originals.items():
+            if original is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original
+        self._env_originals = {}
 
     @classmethod
     def from_env(cls) -> "CogneeConfig":
@@ -181,11 +212,13 @@ class CogneeConfig:
                 db_name=os.getenv("DB_NAME", "cognee_db"),
                 graph_provider=os.getenv("GRAPH_DATABASE_PROVIDER", "kuzu"),
                 graph_url=os.getenv("GRAPH_DATABASE_URL", ""),
+                graph_username=os.getenv("GRAPH_DATABASE_USERNAME", ""),
+                graph_password=os.getenv("GRAPH_DATABASE_PASSWORD", ""),
                 vector_provider=os.getenv("VECTOR_DB_PROVIDER", "lancedb"),
                 vector_url=os.getenv("VECTOR_DB_URL", ""),
             ),
             auth_enabled=os.getenv("REQUIRE_AUTHENTICATION", "false").lower() == "true",
-            jwt_secret=os.getenv("FASTAPI_USERS_JWT_SECRET", "cognee-jart-on-secret-change-me"),
+            jwt_secret=os.getenv("FASTAPI_USERS_JWT_SECRET", ""),
             data_root=os.getenv("DATA_ROOT_DIRECTORY"),
         )
 
@@ -234,7 +267,7 @@ class CogneeConfig:
                 graph_provider="neo4j",
                 graph_url=f"bolt://{db_host}:7687",
                 graph_username="neo4j",
-                graph_password="cognee-jart-on",
+                graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
                 vector_provider="qdrant",
                 vector_url=f"http://{db_host}:6333",
             ),

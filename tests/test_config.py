@@ -87,13 +87,75 @@ class TestCogneeConfig:
         assert os.environ["ENABLE_BACKEND_ACCESS_CONTROL"] == "false"
 
     def test_from_env(self):
-        os.environ["LITELLM_BASE_URL"] = "http://test:4000"
-        os.environ["OLLAMA_BASE_URL"] = "http://test:11434"
+        saved = {
+            "LITELLM_BASE_URL": os.environ.get("LITELLM_BASE_URL"),
+            "OLLAMA_BASE_URL": os.environ.get("OLLAMA_BASE_URL"),
+        }
+        try:
+            os.environ["LITELLM_BASE_URL"] = "http://test:4000"
+            os.environ["OLLAMA_BASE_URL"] = "http://test:11434"
 
-        config = CogneeConfig.from_env()
-        assert config.litellm.base_url == "http://test:4000"
-        assert config.embeddings.base_url == "http://test:11434"
+            config = CogneeConfig.from_env()
+            assert config.litellm.base_url == "http://test:4000"
+            assert config.embeddings.base_url == "http://test:11434"
+        finally:
+            for key, val in saved.items():
+                if val is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = val
+    def test_revert_env_restores_originals(self):
+        """revert_env() should undo all mutations from apply_env()."""
+        config = CogneeConfig.local_dev()
+        # Capture original state
+        orig_keys = [
+            "LLM_PROVIDER", "EMBEDDING_PROVIDER", "STRUCTURED_OUTPUT_FRAMEWORK",
+            "REQUIRE_AUTHENTICATION", "FASTAPI_USERS_JWT_SECRET",
+        ]
+        originals = {k: os.environ.get(k) for k in orig_keys}
+        try:
+            config.apply_env()
+            assert os.environ.get("LLM_PROVIDER") == "custom"
+            config.revert_env()
+            for k in orig_keys:
+                assert os.environ.get(k) == originals[k], f"{k} not reverted"
+        finally:
+            # Hard cleanup in case assert fails
+            for k, v in originals.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
 
-        # Cleanup
-        del os.environ["LITELLM_BASE_URL"]
-        del os.environ["OLLAMA_BASE_URL"]
+    def test_auth_enabled_requires_jwt_secret(self):
+        """apply_env() with auth_enabled=True and empty jwt_secret must raise ValueError."""
+        config = CogneeConfig(auth_enabled=True, jwt_secret="")
+        try:
+            with __import__("pytest").raises(ValueError, match="non-empty jwt_secret"):
+                config.apply_env()
+        finally:
+            config.revert_env()
+
+    def test_default_jwt_secret_is_empty(self):
+        """Default jwt_secret must be empty to prevent accidental insecure defaults."""
+        config = CogneeConfig()
+        assert config.jwt_secret == ""
+
+    def test_from_env_reads_graph_credentials(self):
+        """from_env() should read GRAPH_DATABASE_USERNAME and GRAPH_DATABASE_PASSWORD."""
+        saved = {
+            "GRAPH_DATABASE_USERNAME": os.environ.get("GRAPH_DATABASE_USERNAME"),
+            "GRAPH_DATABASE_PASSWORD": os.environ.get("GRAPH_DATABASE_PASSWORD"),
+        }
+        try:
+            os.environ["GRAPH_DATABASE_USERNAME"] = "neo4j"
+            os.environ["GRAPH_DATABASE_PASSWORD"] = "s3cret"
+            config = CogneeConfig.from_env()
+            assert config.database.graph_username == "neo4j"
+            assert config.database.graph_password == "s3cret"
+        finally:
+            for key, val in saved.items():
+                if val is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = val
