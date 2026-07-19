@@ -10,6 +10,8 @@ import tempfile
 
 import pytest
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.fixture(scope="module")
 def config():

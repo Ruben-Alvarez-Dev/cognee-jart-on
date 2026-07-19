@@ -4,12 +4,16 @@ Tests for COGNEE-jart-on configuration module.
 
 import os
 
+import pytest
+
 from cognee_jart_on.config import (
     CogneeConfig,
     DatabaseConfig,
     LiteLLMConfig,
     OllamaEmbeddingConfig,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestLiteLLMConfig:

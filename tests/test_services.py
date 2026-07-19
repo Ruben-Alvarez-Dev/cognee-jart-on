@@ -9,6 +9,8 @@ import pytest
 import urllib.request
 import urllib.error
 
+pytestmark = pytest.mark.integration
+
 
 def _http_get(url: str, headers: dict = None, timeout: int = 5) -> tuple:
     """Simple HTTP GET helper."""

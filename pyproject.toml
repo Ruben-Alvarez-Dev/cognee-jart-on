@@ -68,6 +68,14 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+markers = [
+    "unit: pure unit test, no external services required",
+    "integration: needs live Docker services (postgres/neo4j/qdrant/litellm)",
+    "e2e: full remember->recall pipeline, needs every service up",
+]
+# Integration/e2e tests auto-skip when their services are unreachable
+# (see tests/conftest.py), so a bare `pytest` runs everywhere. Use
+# `pytest -m unit` for the fast, service-free subset.
 
 [tool.ruff]
 line-length = 100
