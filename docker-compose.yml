@@ -27,13 +27,12 @@ services:
     command: --config /app/config.yaml --port 4000
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm}
-    env_file:
-      - path: .env
-        required: false
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-changeme}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      # Image ships no curl; /health needs auth. Use bundled python against
+      # the unauthenticated liveliness probe.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -48,7 +47,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: cognee
-      POSTGRES_PASSWORD: cognee
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: cognee_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -69,7 +68,7 @@ services:
       - "7474:7474"   # Browser
       - "7687:7687"   # Bolt
     environment:
-      NEO4J_AUTH: neo4j/cognee-jart-on
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-changeme}
       NEO4J_PLUGINS: '["apoc"]'
     volumes:
       - neo4j_data:/data
@@ -93,7 +92,8 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz"]
+      # Image ships no curl/wget/python; probe the REST port over bash TCP.
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333'"]
       interval: 10s
       timeout: 5s
       retries: 5
