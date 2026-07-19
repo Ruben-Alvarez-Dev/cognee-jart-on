@@ -26,8 +26,7 @@ services:
       - ./docs/services/litellm_config.yaml:/app/config.yaml:ro
     command: --config /app/config.yaml --port 4000
     environment:
-      # Set your real LLM API key here (or export before docker compose up)
-      LITELLM_LLM_API_KEY: ${LITELLM_LLM_API_KEY:-sk-your-real-api-key}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm}
     env_file:
       - path: .env
