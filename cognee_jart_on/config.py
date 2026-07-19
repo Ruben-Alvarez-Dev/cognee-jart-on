@@ -20,7 +20,11 @@ class LiteLLMConfig:
     """LiteLLM proxy configuration for LLM calls."""
 
     base_url: str = "http://localhost:4000"
-    api_key: str = "sk-litellm"
+    # Must equal the proxy's master key. Read from LITELLM_MASTER_KEY so the
+    # client and the proxy stay in sync; both default to "sk-litellm".
+    api_key: str = field(
+        default_factory=lambda: os.environ.get("LITELLM_MASTER_KEY", "sk-litellm")
+    )
     model: str = "cognee-llm"
     timeout: int = 120
 
@@ -195,7 +199,8 @@ class CogneeConfig:
         return cls(
             litellm=LiteLLMConfig(
                 base_url=os.getenv("LITELLM_BASE_URL", "http://localhost:4000"),
-                api_key=os.getenv("LITELLM_API_KEY", "sk-litellm"),
+                api_key=os.getenv("LITELLM_API_KEY")
+                or os.getenv("LITELLM_MASTER_KEY", "sk-litellm"),
                 model=os.getenv("LITELLM_MODEL", "cognee-llm"),
             ),
             embeddings=OllamaEmbeddingConfig(
@@ -228,7 +233,6 @@ class CogneeConfig:
         return cls(
             litellm=LiteLLMConfig(
                 base_url="http://localhost:4000",
-                api_key="sk-litellm",
                 model="cognee-llm",
             ),
             embeddings=OllamaEmbeddingConfig(
@@ -249,7 +253,6 @@ class CogneeConfig:
         return cls(
             litellm=LiteLLMConfig(
                 base_url=f"http://{litellm_host}:4000",
-                api_key="sk-litellm",
                 model="cognee-llm",
             ),
             embeddings=OllamaEmbeddingConfig(

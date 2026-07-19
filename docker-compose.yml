@@ -27,7 +27,9 @@ services:
     command: --config /app/config.yaml --port 4000
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-changeme}
+      # Default matches the client's default api_key. Override in the shell
+      # (not just .env) so the python client sees the same value.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm}
     restart: unless-stopped
     healthcheck:
       # Image ships no curl; /health needs auth. Use bundled python against
