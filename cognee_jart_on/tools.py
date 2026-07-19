@@ -20,8 +20,6 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-import cognee
-
 
 async def remember(
     data: str,
@@ -39,6 +37,8 @@ async def remember(
         JSON string with operation result.
     """
     try:
+        import cognee
+
         result = await cognee.remember(
             data=data,
             dataset_name=dataset_name,
@@ -71,6 +71,8 @@ async def recall(
         JSON string with search results.
     """
     try:
+        import cognee
+
         kwargs: dict[str, Any] = {"query_text": query, "top_k": top_k}
         if datasets:
             kwargs["datasets"] = [d.strip() for d in datasets.split(",")]
@@ -108,6 +110,8 @@ async def improve(
         JSON string with operation result.
     """
     try:
+        import cognee
+
         kwargs: dict[str, Any] = {"dataset": dataset_name}
         if session_ids:
             kwargs["session_ids"] = [s.strip() for s in session_ids.split(",")]
@@ -135,6 +139,8 @@ async def forget(
         JSON string with operation result.
     """
     try:
+        import cognee
+
         kwargs: dict[str, Any] = {}
         if dataset_name:
             kwargs["dataset"] = dataset_name
@@ -154,6 +160,8 @@ async def list_datasets() -> str:
         JSON string with dataset list.
     """
     try:
+        import cognee
+
         datasets = await cognee.datasets.list_datasets()
         return json.dumps({
             "datasets": [
@@ -173,7 +181,7 @@ def cognee_tools(session_id: Optional[str] = None) -> list:
     that accept tool functions.
 
     Args:
-        session_id: Optional default session ID for all tools.
+        session_id: Optional default session ID for session-aware tools.
 
     Returns:
         List of tool functions.
@@ -181,7 +189,9 @@ def cognee_tools(session_id: Optional[str] = None) -> list:
     tools = [remember, recall, improve, forget, list_datasets]
 
     if session_id:
-        # Wrap tools with default session_id
+        # Only wrap session-aware tools (remember, recall).
+        # improve() uses session_ids (plural), forget() and list_datasets()
+        # don't accept session_id at all.
         import functools
 
         def _with_session(func, sid):
@@ -192,6 +202,12 @@ def cognee_tools(session_id: Optional[str] = None) -> list:
                 return await func(*args, **kwargs)
             return wrapper
 
-        tools = [_with_session(t, session_id) for t in tools]
+        tools = [
+            _with_session(remember, session_id),
+            _with_session(recall, session_id),
+            improve,
+            forget,
+            list_datasets,
+        ]
 
     return tools
