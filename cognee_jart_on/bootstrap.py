@@ -49,9 +49,9 @@ async def setup_cognee(config: Optional[CogneeConfig] = None) -> None:
     # (Cognee caches config on first import, so we force a refresh)
     try:
         cognee.config.set_llm_config({
-            "llm_provider": "custom",
-            "llm_model": f"custom/{config.litellm.model}",
-            "llm_endpoint": f"{config.litellm.base_url}/v1",
+            "llm_provider": "openai",
+            "llm_model": f"openai/{config.litellm.model}",
+            "llm_endpoint": config.litellm.base_url,
             "llm_api_key": config.litellm.api_key,
         })
     except Exception as e:
@@ -94,11 +94,12 @@ async def verify_connections(config: Optional[CogneeConfig] = None) -> dict:
 
     results = {}
 
-    # Check LiteLLM proxy
+    # Check LiteLLM proxy (requires auth header)
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{config.litellm.base_url}/health",
+                headers={"Authorization": f"Bearer {config.litellm.api_key}"},
                 timeout=aiohttp.ClientTimeout(total=5),
             ) as resp:
                 results["litellm"] = resp.status == 200
