@@ -4,7 +4,7 @@ Configuration for COGNEE-jart-on.
 Defines all settings for the P2P Cognee integration:
 - LiteLLM proxy connection (LLM enmascarado)
 - Ollama local embeddings
-- Shared database backends (Postgres, Neo4j, Qdrant)
+- Shared database backends (Postgres + pgvector, Neo4j)
 """
 
 from __future__ import annotations
@@ -83,7 +83,8 @@ class DatabaseConfig:
     graph_username: str = ""
     graph_password: str = ""
 
-    # Vector (LanceDB local by default, Qdrant for shared)
+    # Vector (LanceDB local by default, PGVector on the shared Postgres for P2P).
+    # Cognee 1.x ships pgvector/lancedb/neptune natively; qdrant is not built in.
     vector_provider: str = "lancedb"
     vector_url: str = ""
 
@@ -111,7 +112,17 @@ class DatabaseConfig:
                 "GRAPH_DATABASE_PASSWORD": self.graph_password,
             })
 
-        if self.vector_provider == "qdrant" and self.vector_url:
+        # PGVector stores vectors in the shared Postgres. Point it at the same
+        # instance explicitly so cognee doesn't warn and fall back.
+        if self.vector_provider == "pgvector" and self.db_provider == "postgres":
+            env.update({
+                "VECTOR_DB_HOST": self.db_host,
+                "VECTOR_DB_PORT": str(self.db_port),
+                "VECTOR_DB_USERNAME": self.db_username,
+                "VECTOR_DB_PASSWORD": self.db_password,
+                "VECTOR_DB_NAME": self.db_name,
+            })
+        elif self.vector_url:
             env["VECTOR_DB_URL"] = self.vector_url
 
         return env
@@ -271,7 +282,6 @@ class CogneeConfig:
                 graph_url=f"bolt://{db_host}:7687",
                 graph_username="neo4j",
                 graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
-                vector_provider="qdrant",
-                vector_url=f"http://{db_host}:6333",
+                vector_provider="pgvector",
             ),
         )

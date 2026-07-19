@@ -71,7 +71,7 @@ class TestInit:
         assert db.db_provider == "postgres"
         assert db.db_host == "10.0.0.5"
         assert db.graph_provider == "neo4j"
-        assert db.vector_provider == "qdrant"
+        assert db.vector_provider == "pgvector"
 
     def test_local_by_default(self, monkeypatch):
         sink: dict = {}

@@ -59,10 +59,15 @@ class TestServiceHealth:
         data = json.loads(body)
         assert "neo4j_version" in data
 
-    def test_qdrant_healthy(self):
-        """Qdrant healthz should pass."""
-        status, body = _http_get("http://localhost:6333/healthz")
-        assert status == 200
+    def test_pgvector_extension_available(self):
+        """Postgres image should ship the pgvector extension for the shared vector store."""
+        import subprocess
+        result = subprocess.run(
+            ["docker", "exec", "cognee-postgres", "sh", "-c",
+             "ls /usr/share/postgresql/16/extension/ | grep -c vector"],
+            capture_output=True, text=True,
+        )
+        assert result.stdout.strip() not in ("", "0"), "pgvector extension not found in image"
 
     def test_litellm_healthy(self):
         """LiteLLM should have healthy endpoints."""

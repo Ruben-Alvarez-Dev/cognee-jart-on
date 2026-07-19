@@ -2,9 +2,8 @@
 #
 # Services:
 #   - litellm:   LLM proxy (enmascara la API real)
-#   - postgres:  Shared relational database
+#   - postgres:  Shared relational database + pgvector vector store
 #   - neo4j:     Shared knowledge graph
-#   - qdrant:    Shared vector store
 #
 # Ollama runs NATIVELY on the Mac Mini (not in Docker) for GPU/Metal access.
 # Install: brew install ollama
@@ -43,7 +42,9 @@ services:
   # PostgreSQL — Shared relational store
   # ─────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    # pgvector image = Postgres 16 + the `vector` extension, so this one
+    # service backs both the relational store and the shared vector store.
+    image: pgvector/pgvector:pg16
     container_name: cognee-postgres
     ports:
       - "5432:5432"
@@ -81,26 +82,9 @@ services:
       timeout: 10s
       retries: 3
 
-  # ─────────────────────────────────────────────
-  # Qdrant — Shared vector store
-  # ─────────────────────────────────────────────
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: cognee-qdrant
-    ports:
-      - "6333:6333"   # REST API
-      - "6334:6334"   # gRPC
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
-    healthcheck:
-      # Image ships no curl/wget/python; probe the REST port over bash TCP.
-      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333'"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Vectors live in the Postgres service above via pgvector — no separate
+  # vector container is needed for P2P.
 
 volumes:
   postgres_data:
   neo4j_data:
-  qdrant_data:

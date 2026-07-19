@@ -63,6 +63,20 @@ class TestDatabaseConfig:
         assert env["DB_PROVIDER"] == "postgres"
         assert env["DB_HOST"] == "192.168.1.100"
 
+    def test_as_env_pgvector_reuses_postgres(self):
+        """pgvector must point at the shared Postgres, not a separate service."""
+        config = DatabaseConfig(
+            db_provider="postgres",
+            db_host="10.0.0.5",
+            db_password="secret",
+            vector_provider="pgvector",
+        )
+        env = config.as_env()
+        assert env["VECTOR_DB_PROVIDER"] == "pgvector"
+        assert env["VECTOR_DB_HOST"] == "10.0.0.5"
+        assert env["VECTOR_DB_PASSWORD"] == "secret"
+        assert env["VECTOR_DB_NAME"] == config.db_name
+
 
 class TestCogneeConfig:
     def test_local_dev(self):
@@ -79,6 +93,7 @@ class TestCogneeConfig:
         assert config.database.db_provider == "postgres"
         assert "192.168.1.100" in config.litellm.base_url
         assert config.database.graph_provider == "neo4j"
+        assert config.database.vector_provider == "pgvector"
 
     def test_apply_env(self):
         config = CogneeConfig.local_dev()

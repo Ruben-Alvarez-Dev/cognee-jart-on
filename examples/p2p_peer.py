@@ -2,7 +2,7 @@
 P2P peer example for COGNEE-jart-on.
 
 Shows how a peer device connects to shared services
-(PostgreSQL + Neo4j + Qdrant on the Mac Mini) and operates
+(PostgreSQL + pgvector + Neo4j on the Mac Mini) and operates
 on the shared knowledge base.
 
 Prerequisites:
@@ -23,7 +23,7 @@ async def main():
 
     config = CogneeConfig.p2p_shared(
         litellm_host=MAC_MINI_IP,  # LiteLLM proxy on Mac Mini
-        db_host=MAC_MINI_IP,       # PostgreSQL, Neo4j, Qdrant on Mac Mini
+        db_host=MAC_MINI_IP,       # PostgreSQL(+pgvector), Neo4j on Mac Mini
     )
 
     # Ollama embeddings run locally on each peer (CPU)

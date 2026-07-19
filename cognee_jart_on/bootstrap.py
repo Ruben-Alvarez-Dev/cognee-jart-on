@@ -156,19 +156,8 @@ async def verify_connections(config: Optional[CogneeConfig] = None) -> dict:
     else:
         results["graph"] = True  # Kuzu always available
 
-    # Check Qdrant
-    if config.database.vector_provider == "qdrant":
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"{config.database.vector_url}/healthz",
-                    timeout=aiohttp.ClientTimeout(total=5),
-                ) as resp:
-                    results["vector"] = resp.status == 200
-        except Exception as e:
-            results["vector"] = False
-            results["vector_error"] = str(e)
-    else:
-        results["vector"] = True  # LanceDB always available
+    # Vector store. PGVector rides on the shared Postgres (already checked as
+    # "database"); LanceDB is local. Neither needs its own probe.
+    results["vector"] = True
 
     return results

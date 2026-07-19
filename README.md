@@ -17,9 +17,9 @@
 ┌─────────────────────────────────────────────────────────┐
 │  Mac Mini (Services)                                    │
 │  ├── LiteLLM Proxy (:4000)     → LLM real (API)        │
-│  ├── PostgreSQL (:5432)        → relational store       │
+│  ├── PostgreSQL (:5432)        → relational + vectors   │
+│  │      (pgvector extension)   → shared vector store    │
 │  ├── Neo4j (:7687)             → knowledge graph        │
-│  ├── Qdrant (:6333)            → vector store           │
 │  └── Ollama (:11434)           → embeddings (CPU)       │
 └──────────────────┬──────────────────────────────────────┘
                    │ LAN
@@ -125,13 +125,12 @@ ollama pull nomic-embed-text:latest
 
 For P2P with shared knowledge base, the Mac Mini runs:
 
-| Service   | Port | Purpose              |
-|-----------|------|----------------------|
-| PostgreSQL | 5432 | Relational store     |
-| Neo4j     | 7687 | Knowledge graph      |
-| Qdrant    | 6333 | Vector store         |
-| LiteLLM   | 4000 | LLM proxy            |
-| Ollama    | 11434| Embeddings (native)  |
+| Service   | Port | Purpose                       |
+|-----------|------|-------------------------------|
+| PostgreSQL | 5432 | Relational store + pgvector vectors |
+| Neo4j     | 7687 | Knowledge graph               |
+| LiteLLM   | 4000 | LLM proxy                     |
+| Ollama    | 11434| Embeddings (native)           |
 
 ## Project structure
 

@@ -19,9 +19,8 @@ _MARKER_ENDPOINTS: dict[str, list[tuple[str, int]]] = {
     "integration": [
         ("localhost", 4000),   # litellm
         ("localhost", 11434),  # ollama
-        ("localhost", 5432),   # postgres
+        ("localhost", 5432),   # postgres (relational + pgvector)
         ("localhost", 7474),   # neo4j http
-        ("localhost", 6333),   # qdrant
     ],
     "e2e": [
         ("localhost", 4000),   # litellm

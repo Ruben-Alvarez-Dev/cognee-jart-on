@@ -34,7 +34,7 @@ def cli():
 @click.option("--litellm-model", default="cognee-llm", help="Model name on LiteLLM proxy")
 @click.option("--ollama-host", default="localhost", help="Ollama host")
 @click.option("--ollama-embed-model", default="nomic-embed-text:latest", help="Ollama embedding model")
-@click.option("--shared-db", is_flag=True, help="Use shared PostgreSQL/Neo4j/Qdrant instead of local")
+@click.option("--shared-db", is_flag=True, help="Use shared PostgreSQL(+pgvector)/Neo4j instead of local")
 @click.option("--db-host", default="localhost", help="Shared database host")
 def init(litellm_host, litellm_model, ollama_host, ollama_embed_model, shared_db, db_host):
     """Verify configuration and connections."""
@@ -48,7 +48,7 @@ def init(litellm_host, litellm_model, ollama_host, ollama_embed_model, shared_db
                     db_provider="postgres", db_host=db_host,
                     graph_provider="neo4j", graph_url=f"bolt://{db_host}:7687",
                     graph_username="neo4j", graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
-                    vector_provider="qdrant", vector_url=f"http://{db_host}:6333",
+                    vector_provider="pgvector",
                 )
                 if shared_db
                 else DatabaseConfig()
@@ -113,7 +113,7 @@ def serve(host, port, litellm_host, ollama_host, shared_db, db_host):
                 db_provider="postgres", db_host=db_host,
                 graph_provider="neo4j", graph_url=f"bolt://{db_host}:7687",
                 graph_username="neo4j", graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
-                vector_provider="qdrant", vector_url=f"http://{db_host}:6333",
+                vector_provider="pgvector",
             )
             if shared_db
             else DatabaseConfig()
