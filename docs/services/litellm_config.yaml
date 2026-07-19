@@ -36,4 +36,4 @@ litellm_settings:
   request_timeout: 120
 
 general_settings:
-  master_key: sk-litellm
+  master_key: os.environ/LITELLM_MASTER_KEY

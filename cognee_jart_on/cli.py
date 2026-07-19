@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from typing import Optional
 
@@ -42,7 +43,16 @@ def init(litellm_host, litellm_model, ollama_host, ollama_embed_model, shared_db
     config = CogneeConfig(
         litellm=LiteLLMConfig(base_url=f"http://{litellm_host}:4000", model=litellm_model),
         embeddings=OllamaEmbeddingConfig(base_url=f"http://{ollama_host}:11434", model=ollama_embed_model),
-        database=DatabaseConfig.p2p_shared(db_host=db_host) if shared_db else DatabaseConfig(),
+        database=(
+                DatabaseConfig(
+                    db_provider="postgres", db_host=db_host,
+                    graph_provider="neo4j", graph_url=f"bolt://{db_host}:7687",
+                    graph_username="neo4j", graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
+                    vector_provider="qdrant", vector_url=f"http://{db_host}:6333",
+                )
+                if shared_db
+                else DatabaseConfig()
+            ),
     )
 
     console.print("\n[bold]COGNEE-jart-on Configuration[/bold]\n")
@@ -102,7 +112,7 @@ def serve(host, port, litellm_host, ollama_host, shared_db, db_host):
             DatabaseConfig(
                 db_provider="postgres", db_host=db_host,
                 graph_provider="neo4j", graph_url=f"bolt://{db_host}:7687",
-                graph_username="neo4j", graph_password="cognee-jart-on",
+                graph_username="neo4j", graph_password=os.environ.get("NEO4J_PASSWORD", "changeme"),
                 vector_provider="qdrant", vector_url=f"http://{db_host}:6333",
             )
             if shared_db
